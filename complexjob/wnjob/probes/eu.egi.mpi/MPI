@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+#
+# Some variables that are used in the probe
+# XXX this should be an argument to the probe
+
+NODES=2
+SMP=2
+APP=cpi
+
+if [ "x${SAME_TEST_DIRNAME}" != "x" ] ; then
+    cd $SAME_TEST_DIRNAME
+fi
+
+export NAG_OK=$SAME_OK
+export NAG_ERROR=$SAME_ERROR
+export NAG_WARNING=$SAME_WARNING
+export NAG_UNKNOWN=$SAME_UNKNOWN
+
+log=$0.log
+
+rm -rf $log
+
+exec 1> >(tee ${log})
+exec 2>&1
+
+VO=`voms-proxy-info -vo`
+
+echo "Date: `date --utc`"
+echo "DN: `voms-proxy-info -identity`"
+echo "VO: $VO"
+echo "WN: `hostname -f`"
+echo ""
+
+export GLITE_WMS_RB_BROKERINFO=
+if [ -n "$GLOBUS_CE" ]; then 
+    CE_NAME=$GLOBUS_CE
+elif [ -n "$GLITE_CE" ]; then
+    CE_NAME=$GLITE_CE
+else 
+    CE_NAME=$(glite-brokerinfo getCE 2>/dev/null || echo $GLITE_WMS_LOG_DESTINATION)
+fi
+export CE=`echo $CE_NAME |awk '{split ($0, x ,":");print x[1]}' 2>/dev/null`
+if [ -z "$CE" ]; then
+    echo "Couldn't find/discover CE hostname."
+    echo "summary: MPI-Status: unable to find the CE hostname"
+    exit $NAG_UNKNOWN
+fi
+
+# LCG_GFAL_INFOSYS=
+
+TAGS=""
+# Do ldapsearch to figure out which flavors to test
+for bdii in `echo "$LCG_GFAL_INFOSYS" | tr "," " "`; do
+    bdii_host=`echo $bdii | cut -d ":" -f1`
+    bdii_port=`echo $bdii | cut -d ":" -f2`
+    key=`ldapsearch -LLL -x -h $bdii_host -p $bdii_port -b 'o=grid' \
+                     "(&(&(objectClass=GlueCE)(GlueCEInfoHostName=$CE)) \
+                     (|(GlueCEAccessControlBaseRule=VO:$VO) \
+                     (GlueCEAccessControlBaseRule=VOMS:/$VO/*)))" \
+                     GlueForeignKey | grep GlueForeignKey | cut -d":" -f2-`
+    st=$?
+    if [ $st -ne 0 ] ; then
+        continue
+    fi
+    set -- foo $key 
+    shift 
+    rtes=`ldapsearch -LLL -x -h $bdii_host -p $bdii_port -b 'o=grid' \
+                    "(&(objectClass=GlueSubCluster)(GlueChunkKey=$1))" \
+                    GlueHostApplicationSoftwareRunTimeEnvironment | \
+                    grep GlueHostApplicationSoftwareRunTimeEnvironment | \
+                    cut -d":" -f2-`
+    st=$?
+    if [ $st -ne 0 ] ; then
+        continue
+    fi
+    for rte in $rtes; do
+        t=`echo $rte | grep MPI`
+        if [ "x$t" != "x" ] ; then
+            TAGS="$t $TAGS"
+        fi
+    done
+    break
+done
+
+if [ "x$TAGS" = "x" ] ; then
+    echo "Unable to retrieve tags from LDAP server."
+    echo "summary: MPI-Status: Unable to retrieve tags from LDAP server"
+    exit $NAG_UNKNWON
+fi
+
+echo "MPI tags found at $CE node:"
+echo "    $TAGS"
+
+if [ "x${I2G_MPI_START}" == "x" ] ; then
+    I2G_MPI_START=`which mpi-start 2> /dev/null`
+    if [ $? -ne 0 ]; then
+        echo "mpi-start not found and I2G_MPI_START variable no set!"
+        echo "MPI Status: ERROR"
+    	echo "summary: MPI Status: Unable to find mpi-start"
+        exit $NAG_ERROR
+    fi
+fi
+echo "MPI-START found at $I2G_MPI_START"
+
+# turn off debugging
+export I2G_MPI_START_VERBOSE=0
+export I2G_MPI_START_DEBUG=0
+export I2G_MPI_START_TRACE=0
+
+# figure out number of nodes 
+cat > hooks.sh << EOF
+pre_run_hook () {
+    defined() {
+        [ \${!1-X} == \${!1-Y} ]
+    }
+    if defined MPI_START_MACHINEFILE; then
+        if [ ! -z \$MPI_START_MACHINEFILE ]; then
+            if [ -f \$MPI_START_MACHINEFILE ]; then
+                cat \$MPI_START_MACHINEFILE
+                exit 0
+            fi
+        fi
+    fi
+    exit 1
+}
+EOF
+
+MIN_SLOTS=$(( $NODES * $SMP ))
+
+MACHINES=`mktemp`
+I2G_MPI_TYPE=mpich I2G_MPI_PRE_RUN_HOOK=hooks.sh $I2G_MPI_START > $MACHINES
+st=$?
+if [ $st -eq 0 ] ; then
+    slots=`cat $MACHINES | wc -l`
+    echo ""
+    echo "Detected $slots slots (expected > $MIN_SLOTS) on the following hosts:"
+    cat $MACHINES | sort -u 
+    if [ $slots -lt $MIN_SLOTS ] ; then
+        echo "mpi-start detected wrong number of processes (expected > $MIN_SLOTS)"
+        echo "MPI Status: WARNING"
+    	echo "summary: MPI Status: wrong number of slots detected ($slots)"
+        exit $NAG_WARNING
+    fi
+    nodes=`cat $MACHINES | sort -u | wc -l`
+    if [ $nodes -ne $NODES ] ; then
+        echo "mpi-start detected wrong number of nodes (expected $NODES)"
+        echo "MPI Status: wARNING"
+    	echo "summary: MPI Status: wrong number of nodes detected ($nodes)"
+        exit $NAG_WARNING
+    fi
+    # how to know if the whole node is allocated?
+else 
+    echo "Unable to execute dummy test to fetch number of processes,"
+    echo "probably mpi-start was unable to detect the scheduler"
+    echo "MPI Status: WARNING"
+    echo "summary: MPI Status: unable to fetch number of processes"
+    exit $NAG_WARNING 
+fi
+
+#
+# Compiling hook:
+#
+cat > hooks.sh << EOF
+pre_run_hook () {
+    MPI_MPICC=\${MPI_MPICC:-mpicc}
+    cmd="\$MPI_MPICC \${MPI_MPICC_OPTS} -o \${I2G_MPI_APPLICATION} \${I2G_MPI_APPLICATION}.c"
+    \$cmd
+
+    if [ \$? -ne 0 ]; then
+        echo 1>&2 "Unable to compile application."
+        echo 1>&2 "Command line: \$cmd"
+        exit 8
+    fi
+
+    # Everything's OK.
+    info_msg "Successfully compiled \${I2G_MPI_APPLICATION}"
+    return 0
+}
+EOF
+
+zero=0
+for flavor in "MPICH" "MPICH2" "OPENMPI" ; do 
+    echo $TAGS | grep "\<${flavor}\>" > /dev/null
+    if [ $? -eq 0 ] ; then
+        TEMPLOG=`mktemp`
+        echo ""
+        echo "* Testing $flavor:"
+        TYPE=`echo $flavor | tr '[:upper:]' '[:lower:]'`
+        # old style way of calling mpi-start to work with all versions
+        I2G_MPI_APPLICATION=$APP\
+            I2G_MPI_TYPE=$TYPE \
+            I2G_MPI_PRE_RUN_HOOK=$PWD/hooks.sh \
+            $I2G_MPI_START 2> $TEMPLOG
+        st=$?
+        if [ $st -eq 0 ] ; then
+            echo "$flavor Status: OK"
+        else
+            zero=$st
+            echo "$flavor MPI-Start exit code != 0"
+            echo "Error log (last 10 lines):"
+            tail $TEMPLOG
+            echo ""
+            if [ $st -eq 7 ] ; then
+                echo "$flavor Status: ERROR, wrong number of slots for application!"
+            elif [ $st -eq 8 ] ; then
+                cat $TEMPLOG | grep "Unable to compile application."  > /dev/null 
+                echo "$flavor Status: ERROR, Unable to compile program."
+            else
+                echo "$flavor Status: ERROR, Check log for more details."
+            fi
+        fi
+        rm $TEMPLOG
+    fi
+done
+
+echo ""
+echo `date --utc`
+echo ""
+ 
+if [ $zero -eq 0 ]; then
+    echo "MPI Probe Status: OK"
+    echo "summary: MPI Status: OK"
+    exit $NAG_OK
+else
+    echo "MPI Probe Status: ERROR"
+    echo "summary: MPI Status: ERROR"
+    echo ""
+    echo "Note: All supported MPI flavours by node are tested using MPI-START." 
+    echo "      If at least one MPI supported flavour fails - overall MPI status will be 'ERROR'"
+    echo ""
+    echo "MPI Environment:"
+    env | grep MPI
+    exit $NAG_ERROR
+fi

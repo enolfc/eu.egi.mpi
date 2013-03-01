@@ -1,0 +1,310 @@
+#!/usr/bin/env python
+##############################################################################
+#
+# NAME:         
+#
+# FACILITY:    
+#
+# COPYRIGHT:
+#
+# DESCRIPTION:
+#         MPI BDII Sanity check.
+#
+# AUTHORS:     Enol Fernandez, IFCA-CSIC based on Goncalo Borges perl code
+#
+# CREATED:     16-Jun-2012
+#
+# NOTES:
+#
+# MODIFIED:
+#
+##############################################################################
+
+import os
+import re
+import sys
+import logging
+import datetime
+from urllib2 import urlopen
+from xml.dom.minidom import parse
+
+# nagios exit codes
+NAGIOS_OK = 0
+NAGIOS_WARN = 1
+NAGIOS_CRIT = 2
+NAGIOS_UNK = 3
+
+# Some LONG Strings
+RTE = 'GlueHostApplicationSoftwareRunTimeEnvironment'
+GOCDB_METHOD = "/public/?method=get_site_list&certification_status=Certified&production_status=Production"
+# Policies
+MAX_CPUT='GlueCEPolicyMaxCPUTime'
+MAX_SLOTS='GlueCEPolicyMaxSlotsPerJob'
+MAX_WALLT='GlueCEPolicyMaxWallClockTime'
+MAX_RUNJOBS='GlueCEPolicyMaxRunningJobs'
+MAX_TOTALJOBS='GlueCEPolicyMaxTotalJobs'
+ASSIGNED_JOBS='GlueCEPolicyAssignedJobSlots'
+
+
+ext_output = []
+warn_output = ''
+error_output = ''
+
+try:
+    import ldap
+except ImportError:
+    print "CRITICAL: ldap module not found"
+    sys.exit(NAGIOS_CRIT)
+
+class UnexpectedException(Exception):
+    pass
+
+def ldap_wrapper(f):
+    def call_ldap(*args):
+        try:
+            l = ldap.initialize(config['bdii_url'])
+            return f(l, *args)            
+        except ldap.LDAPError, e:
+            print "UNKNOWN Error when trying to connect to %s: %s" % (config['bdii_url'], e)
+            sys.exit(NAGIOS_UNK)
+    return call_ldap
+
+
+# Default configuration
+config = {
+    "bdii_url": "ldap://topbdii.core.ibergrid.eu:2170",
+    "bdii_base": "o=grid",
+    "flavors": ["MPICH", "MPICH2", "OPENMPI"],
+    "gocdb_url": "https://goc.egi.eu/gocdbpi",
+    "timeout": 30,
+}
+
+def validate_mpi_env(env):
+    global warn_output
+    global error_output
+    has_flavors = False 
+    for flv in config['flavors']:
+        flavor_name = False
+        flavor_version = False
+        r = re.compile('^%s(-\S+)?$' % flv)
+        tags = []
+        for e in env:
+            res = r.match(e)
+            if res:
+                if res.groups()[0]:
+                    flavor_version = True
+                    tags.append(e)	
+                else:
+                    flavor_name = True
+                    tags.append(e)	
+        if tags:
+            ext_output.append('Found tags %s for flavor %s' % (', '.join(tags), flv))
+        if flavor_name and not flavor_version:
+            ext_output.append('Does not publish %s version' % flv)
+            warn_output = ext_output[-1]
+        has_flavors |= flavor_name
+    mpi_start_tags = [ m for m in env if m.find('MPI-START') == 0 ]
+    if not mpi_start_tags:
+        ext_output.append('Does not publish MPI-START tag!')
+        error_output = ext_output[-1]
+    else:
+        ext_output.append('Found tag %s for MPI-START' % ', '.join(mpi_start_tags))
+    if not has_flavors:
+        ext_output.append('Does not publish any MPI flavors!')
+        error_output = ext_output[-1]
+
+def get_policy_value(ce, pcy):
+    global warn_output
+    global error_output
+    if config['verbose']:
+        print "Checking policy %s" % pcy
+    try:
+        v = int(ce[pcy][0])
+        if config['verbose']:
+            print "Found value %d" % v
+        ext_output.append('Found value %d for policy %s' % (v, pcy))
+        if v == 0 or v == 1 or v > 999999998:
+            ext_output.append('Publishes an incorrect value for %s (%d)' % (pcy, v))
+            warn_output = ext_output[-1]
+        return v
+    except KeyError:
+        ext_output.append('does not publish %s' % pcy)
+        error_output = ext_output[-1]
+
+def validate_policies(ce):
+    global warn_output
+    if config['verbose']:
+        print "Checking Policies for %s" % ce['GlueCEUniqueID'][0]
+    max_cpu_time = get_policy_value(ce, MAX_CPUT)
+    max_wc_time =  get_policy_value(ce, MAX_WALLT)
+    if max_wc_time < max_cpu_time:
+        ext_output.append("publishes %s (%d) < %s (%d)"
+                      % (MAX_WALLT, max_wc_time, MAX_CPUT, max_cpu_time))
+        if max_cpu_time / max_wc_time < 4:
+            ext_output.append("publishes %s (%d) / %s (%d) < 4"
+                          % (MAX_CPUT, max_wc_time, MAX_WALLT, max_cpu_time))
+            warn_output = ext_output[-1]
+    max_slots = get_policy_value(ce, MAX_SLOTS)
+
+@ldap_wrapper
+def get_srte_ce(l, ce):
+    f = '(&(&(objectClass=GlueCE)(GlueCEInfoHostName=%s))' % ce
+    f += ('(|(GlueCEAccessControlBaseRule=VO:%(vo)s)' 
+          '(GlueCEAccessControlBaseRule=VOMS:/%(vo)s/*)))') % config
+    entries = l.search_st('o=grid', ldap.SCOPE_SUBTREE, f,
+                          ['GlueForeignKey'])
+    if not entries:
+        raise UnexpectedException('Unable to get site name for %s' % ce)
+    # assume the first entry is good if we have more than one CE
+    site = [ f for f in entries[0][1]['GlueForeignKey'] if f.find('GlueClusterUniqueID') == 0][0]
+    if not site:
+        raise UnexpectedException('Unable to get site name for %s' % ce)
+    # search 
+    entries = l.search_st('o=grid', ldap.SCOPE_SUBTREE,
+                          '(&(objectClass=GlueSubCluster)(GlueChunkKey=%s))' % site,
+                          [RTE])
+    if not entries:
+        raise UnexpectedException('Unable to get cluster info for site %s' % site)
+    return entries
+
+@ldap_wrapper
+def get_pcy_ce(l, ce):
+    f = '(&(&(objectClass=GlueCE)(GlueCEInfoHostName=%s))' % ce 
+    f += ('(|(GlueCEAccessControlBaseRule=VO:%s)' 
+          '(GlueCEAccessControlBaseRule=VOMS:/%s/*)))') % (config['vo'], config['vo'])
+    r = l.search_st('o=grid', ldap.SCOPE_SUBTREE, f,
+                    [MAX_RUNJOBS, MAX_TOTALJOBS, MAX_SLOTS, MAX_WALLT,
+                     ASSIGNED_JOBS, MAX_CPUT, 'GlueCEUniqueID'])
+    if not r:
+        raise UnexpectedException('Unable to get policy info for %s' % ce)
+    return r
+
+@ldap_wrapper
+def get_pcy_cluster(l, cluster):
+    f = '(&(&(objectClass=GlueCE)(GlueForeignKey=GlueClusterUniqueID=%s))' % cluster 
+    f += ('(|(GlueCEAccessControlBaseRule=VO:%s)' 
+          '(GlueCEAccessControlBaseRule=VOMS:/%s/*)))') % (config['vo'], config['vo'])
+    r = l.search_st('o=grid', ldap.SCOPE_SUBTREE, f,
+                    [MAX_RUNJOBS, MAX_TOTALJOBS, MAX_SLOTS, MAX_WALLT,
+                     ASSIGNED_JOBS, MAX_CPUT, 'GlueCEUniqueID'])
+    if not r:
+        raise UnexpectedException('Unable to get policy info for %s' % cluster)
+    return r
+
+@ldap_wrapper
+def get_srte_site(l, site):
+    entries = l.search_st(config['bdii_base'], ldap.SCOPE_SUBTREE,
+                          '(&(objectclass=GlueCluster)(GlueForeignKey=GlueSiteUniqueID=%s))' % site,
+                          ['GlueClusterUniqueID'])
+    if not entries:
+        raise UnexpectedException('Unable to get Cluster IDs for site %s' % site)
+    for e in entries:
+        cluster_id = e[1]['GlueClusterUniqueID'][0]
+    r = l.search_st(config['bdii_base'], ldap.SCOPE_SUBTREE,
+                    '(&(objectclass=GlueSubCluster)(GlueChunkKey=GlueClusterUniqueID=%s))'
+                      % cluster_id, 
+                    [RTE])
+    if not r:
+        raise UnexpectedException('Unable to get RTE info for site %s' % site)
+    return r, cluster_id
+ 
+def validate_site_ces(site):
+    try:
+        if config['verbose']:
+            print "Checking SITE %s" % site
+        srte, cluster = get_srte_site(site)
+        validate_mpi_env(srte[0][1][RTE])
+        pcy = get_pcy_cluster(cluster)
+        for ce in pcy:
+            validate_policies(ce[1])
+    except UnexpectedException, e:
+        print "Unexpected error: %s %s" % (site, e)
+        sys.exit(NAGIOS_UNK)
+
+def get_gocdb_sites():
+    if config['verbose']:
+        print "Connecting to %s to fetch site list" % ''.join((config["gocdb_url"], GOCDB_METHOD))
+    f = urlopen(config["gocdb_url"] + GOCDB_METHOD) # , timeout=15)
+    d = parse(f) 
+    return [ s.getAttribute("NAME") for s in d.getElementsByTagName("SITE") ]
+
+def validate_ce(ce):
+    global exit_code
+    try:
+        if config['verbose']:
+            print "Checking CE %s" % ce 
+        srte = get_srte_ce(ce)
+        validate_mpi_env(srte[0][1][RTE])
+        pcy = get_pcy_ce(ce)
+        validate_policies(pcy[0][1])
+    except UnexpectedException, e:
+        print "Unknown error when checking %s: %s" % (ce, e)
+        sys.exit(NAGIOS_UNK)
+
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option('-v', '--verbose', dest='verbose',
+                  help='be verbose', action='store_true', default=False)
+parser.add_option('-H', '--hostname', dest='hostname',
+                  help='test host HOSTNAME', metavar='HOSTNAME')
+parser.add_option('-a', '--all', action='store_true', default=False,
+                  help='Test all the sites in GOCDB', dest='all')
+parser.add_option('-V', '--vo', default='ops', dest='vo',
+                  help='Test info for VO', metavar='VO')
+parser.add_option('-t', '--timeout', dest='timeout', default=config['timeout'],
+                  help='set timeout value to TIMEOUT', metavar='TIMEOUT')
+parser.add_option('-f', '--flavor', dest='flavors', default=[],
+                  help='test specific MPI flavor', metavar='FLAVOR',
+                  action="append")
+parser.add_option('-b', '--bdii', dest='bdii_host', 
+                  help='use BDII_HOST (with port!) for queries', metavar='BDII_HOST',)
+(options, args) = parser.parse_args()
+
+if options.flavors:
+    config['flavors'] = options.flavors
+if options.verbose:
+    print "Executing MPI BDII Sanity check (%s)" % datetime.datetime.now()
+    print "Will test %s flavors" % ', '.join(config['flavors'])
+config['timeout'] = options.timeout
+config['verbose'] = options.verbose
+config['vo'] = options.vo
+
+if options.bdii_host:
+    config['bdii_url'] = 'ldap://%s' % (options.bdii_host)
+else:
+    try:
+        bdii = os.environ['LCG_GFAL_INFOSYS'].split(',')[0]
+        config['bdii_url'] =  'ldap://%s' % (bdii)
+    except KeyError:
+        pass
+
+if options.all and options.hostname:
+    parser.error('-a and -H options cannot be used simultaneously')
+else:
+    if options.all:
+        if config['verbose']:
+            print "Testing all sites in GOCDB"
+        for site in get_gocdb_sites():
+            validate_site_ces(site)
+    elif options.hostname:
+        validate_ce(options.hostname)
+    else:
+        parser.error('Specify -a or -H options')
+
+if error_output:
+    exit_code = NAGIOS_CRIT
+elif warn_output: 
+    exit_code = NAGIOS_WARN
+else:
+    print 'MPI related BDII Values OK'
+    exit_code = NAGIOS_OK
+
+if error_output:
+    print 'CRITICAL: %s' % error_output
+if warn_output:
+    print 'WARNING: %s' % warn_output
+if ext_output:
+    print '\n'.join(ext_output)
+sys.exit(exit_code)
+
