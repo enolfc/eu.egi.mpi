@@ -4,34 +4,33 @@
 #
 
 Summary: A MPI Nagios monitoring probe.
-Name: eu-egi-mpi-nagios 
+Name: eu.egi.mpi
 Version: 1.0.0
 Vendor: EGI 
 Release: 1%{?dist}
 License: ASL 2.0
 Group: System Environment/Daemons 
-Source: %{name}-%{version}.src.tar.gz
+Source: %{name}.src.tar.gz
 URL: https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 #Requires: python
 #Requires: emi-cream-nagios
 BuildArch: noarch
-URL: http://devel.ifca.es/mpi-start/
 
 %description
 This package contains the probes for testing MPI support in the EGI.eu infrastructure.
 Full description of probes is available at https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios.
 
 %prep
-%setup -q
+%setup -q -n %{name}
 
 %build
-cd $RPM_BUILD_DIR/@NAME_PREFIX@mpi-start-@VERSION@
+cd $RPM_BUILD_DIR/eu.egi.mpi
 %{__make}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-cd $RPM_BUILD_DIR/@NAME_PREFIX@mpi-start-@VERSION@
+cd $RPM_BUILD_DIR/eu.egi.mpi
 %{__make} DESTDIR=$RPM_BUILD_ROOT install
 
 %files
