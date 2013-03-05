@@ -4,7 +4,7 @@
 #
 
 Summary: A MPI Nagios monitoring probe.
-Name: eu.egi.mpi
+Name: egi-mpi-nagios
 Version: 0.0.1
 Vendor: EGI 
 Release: 1%{?dist}
@@ -26,12 +26,12 @@ Full description of probes is available at https://wiki.egi.eu/wiki/VT_MPI_withi
 %setup -q -n %{name}
 
 %build
-cd $RPM_BUILD_DIR/eu.egi.mpi
+cd $RPM_BUILD_DIR/%{name}
 %{__make}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-cd $RPM_BUILD_DIR/eu.egi.mpi
+cd $RPM_BUILD_DIR/%{name}
 %{__make} DESTDIR=$RPM_BUILD_ROOT install
 
 %files

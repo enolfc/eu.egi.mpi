@@ -9,6 +9,7 @@
 DESTDIR=.
 
 PROBESNAME=eu.egi.mpi
+PKGNAME=egi-mpi-nagios
 PROBESDIR=$(DESTDIR)/usr/libexec/grid-monitoring/probes/$(PROBESNAME)
 
 all:
@@ -23,15 +24,15 @@ install: all
 
 dist:
 	mkdir -p build
-	rm -rf build/$(PROBESNAME).src.tar.gz
-	git archive --prefix $(PROBESNAME)/ master | gzip > build/$(PROBESNAME).src.tar.gz
+	rm -rf build/$(PKGNAME).src.tar.gz
+	git archive --prefix $(PKGNAME)/ master | gzip > build/$(PKGNAME).src.tar.gz
 
 rpm: dist
 	mkdir -p build/SOURCES build/SRPMS build/SPECS build/BUILD build/RPMS
-	cp build/$(PROBESNAME).src.tar.gz build/SOURCES
-	cp $(PROBESNAME).spec build/SPECS
-	rpmbuild --define "_topdir `pwd`/build" -bs build/SPECS/$(PROBESNAME).spec
-	rpmbuild $(PACKAGER) --define "_topdir `pwd`/build" -bb build/SPECS/$(PROBESNAME).spec
+	cp build/$(PKGNAME).src.tar.gz build/SOURCES
+	cp $(PKGNAME).spec build/SPECS
+	rpmbuild --define "_topdir `pwd`/build" -bs build/SPECS/$(PKGNAME).spec
+	rpmbuild --define "_topdir `pwd`/build" -bb build/SPECS/$(PKGNAME).spec
 
 clean:
 	rm -rf build
