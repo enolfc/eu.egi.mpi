@@ -15,7 +15,7 @@ URL: https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: python
 Requires: python-ldap
-#Requires: org.sam? 
+Requires: emi-cream-nagios
 BuildArch: noarch
 
 %description
@@ -46,5 +46,6 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed May 1 2013 Emir Imamagic <eimamagi@srce.hr> - 0.0.2-1%{?dist}
 - Modified test configuration for EMI CREAM-CE probe
+- Added CREAM-CE probe requirement
 * Mon Mar 04 2013 <enolfc _AT_ ifca.unican.es> - 0.0.1-1%{?dist}
 - Initial packaging of the probes. 
