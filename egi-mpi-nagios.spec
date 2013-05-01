@@ -5,7 +5,7 @@
 
 Summary: A MPI Nagios monitoring probe.
 Name: egi-mpi-nagios
-Version: 0.0.1
+Version: 0.0.2
 Vendor: EGI 
 Release: 1%{?dist}
 License: ASL 2.0
@@ -44,5 +44,7 @@ cd $RPM_BUILD_DIR/%{name}
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Wed May 1 2013 Emir Imamagic <eimamagi@srce.hr> - 0.0.2-1%{?dist}
+- Modified test configuration for EMI CREAM-CE probe
 * Mon Mar 04 2013 <enolfc _AT_ ifca.unican.es> - 0.0.1-1%{?dist}
 - Initial packaging of the probes. 
