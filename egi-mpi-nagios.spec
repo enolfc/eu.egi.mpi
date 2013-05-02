@@ -5,7 +5,7 @@
 
 Summary: A MPI Nagios monitoring probe.
 Name: egi-mpi-nagios
-Version: 0.0.2
+Version: 0.0.3
 Vendor: EGI 
 Release: 1%{?dist}
 License: ASL 2.0
@@ -37,13 +37,15 @@ cd $RPM_BUILD_DIR/%{name}
 %files
 %defattr(-,root,root)
 /usr/libexec/grid-monitoring/probes/eu.egi.mpi
-%config %{_sysconfdir}/ncg-metric-config.d/eu.egi.mpi.conf
+# %config %{_sysconfdir}/ncg-metric-config.d/eu.egi.mpi.conf
 %doc README
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu May 2 2013 Emir Imamagic <eimamagi@srce.hr> - 0.0.3-1%{?dist}
+- Removed ncg-metric-config file
 * Wed May 1 2013 Emir Imamagic <eimamagi@srce.hr> - 0.0.2-1%{?dist}
 - Modified test configuration for EMI CREAM-CE probe
 - Added CREAM-CE probe requirement
