@@ -49,6 +49,7 @@ fi
 # LCG_GFAL_INFOSYS=
 
 TAGS=""
+LRMS=""
 # Do ldapsearch to figure out which flavors to test
 for bdii in `echo "$LCG_GFAL_INFOSYS" | tr "," " "`; do
     bdii_host=`echo $bdii | cut -d ":" -f1`
@@ -79,6 +80,18 @@ for bdii in `echo "$LCG_GFAL_INFOSYS" | tr "," " "`; do
             TAGS="$t $TAGS"
         fi
     done
+    lrmss=`ldapsearch -LLL -x -h $bdii_host -p $bdii_port -b 'o=grid' \
+                     "(&(&(objectClass=GlueCE)(GlueCEInfoHostName=$CE)) \
+                     (|(GlueCEAccessControlBaseRule=VO:$VO) \
+                     (GlueCEAccessControlBaseRule=VOMS:/$VO/*)))" \
+                     GlueCEInfoLRMSType | grep GlueCEInfoLRMSType  | cut -d":" -f2-`
+    st=$?
+    if [ $st -ne 0 ] ; then
+        continue
+    fi
+    set -- foo $lrmss
+    shift
+    LRMS=`echo $1 | tr '[:upper:]' '[:lower:]'`
     break
 done
 
@@ -125,36 +138,46 @@ pre_run_hook () {
 }
 EOF
 
+NODE_ALLOC_SUPPORT=1
+# Include here any other LRMS without node-level alloc support
+if [ "$lrms" == "sge" -o "$lrms" == "ge" ] ; then
+    NODE_ALLOC_SUPPORT=0
+fi
+
 MIN_SLOTS=$(( $NODES * $SMP ))
 
 MACHINES=`mktemp`
 I2G_MPI_TYPE=mpich I2G_MPI_PRE_RUN_HOOK=hooks.sh $I2G_MPI_START > $MACHINES
 st=$?
-if [ $st -eq 0 ] ; then
-    slots=`cat $MACHINES | wc -l`
-    echo ""
-    echo "Detected $slots slots (expected > $MIN_SLOTS) on the following hosts:"
-    cat $MACHINES | sort -u 
-    if [ $slots -lt $MIN_SLOTS ] ; then
-        echo "mpi-start detected wrong number of processes (expected > $MIN_SLOTS)"
-        echo "MPI Status: WARNING"
-    	echo "summary: MPI Status: wrong number of slots detected ($slots)"
-        exit $NAG_WARNING
-    fi
-    nodes=`cat $MACHINES | sort -u | wc -l`
-    if [ $nodes -ne $NODES ] ; then
-        echo "mpi-start detected wrong number of nodes (expected $NODES)"
-        echo "MPI Status: wARNING"
-    	echo "summary: MPI Status: wrong number of nodes detected ($nodes)"
-        exit $NAG_WARNING
-    fi
-    # how to know if the whole node is allocated?
-else 
+if [ $st -ne 0 ] ; then
     echo "Unable to execute dummy test to fetch number of processes,"
     echo "probably mpi-start was unable to detect the scheduler"
     echo "MPI Status: WARNING"
     echo "summary: MPI Status: unable to fetch number of processes"
     exit $NAG_WARNING 
+else
+    slots=`cat $MACHINES | wc -l`
+    echo ""
+    echo "Detected $slots slots on the following hosts:"
+    cat $MACHINES | sort -u 
+    if [ $slots -lt $MIN_SLOTS ] ; then
+        echo "mpi-start detected wrong number of processes (expected > $MIN_SLOTS)"
+        if [ $NODE_ALLOC_SUPPORT -eq 0 ] ; then
+            echo "but your LRMS ($LRMS) may not support node-level allocation!"
+        else
+            echo "mpi-start detected wrong number of processes (expected > $MIN_SLOTS)"
+            echo "MPI Status: WARNING"
+            echo "summary: MPI Status: wrong number of slots detected ($slots)"
+            exit $NAG_WARNING
+        fi
+    fi
+    nodes=`cat $MACHINES | sort -u | wc -l`
+    if [ $NODE_ALLOC_SUPPORT -ne 0 -a $nodes -ne $NODES ] ; then
+        echo "mpi-start detected wrong number of nodes (expected $NODES)"
+        echo "MPI Status: wARNING"
+        echo "summary: MPI Status: wrong number of nodes detected ($nodes)"
+        exit $NAG_WARNING
+    fi
 fi
 
 #
