@@ -78,7 +78,7 @@ done
 if [ "x$TAGS" = "x" ] ; then
     echo "Unable to retrieve tags from LDAP server."
     echo "summary: MPI Status: UNKNOWN"
-    exit $NAG_UNKNWON
+    exit $NAG_UNKNOWN
 fi
 
 echo "MPI tags found at $CE node:"
