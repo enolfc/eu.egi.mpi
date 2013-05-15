@@ -5,7 +5,7 @@
 
 Summary: A MPI Nagios monitoring probe.
 Name: egi-mpi-nagios
-Version: 0.0.1
+Version: 0.0.3
 Vendor: EGI 
 Release: 1%{?dist}
 License: ASL 2.0
@@ -15,7 +15,7 @@ URL: https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: python
 Requires: python-ldap
-#Requires: org.sam? 
+Requires: emi-cream-nagios
 BuildArch: noarch
 
 %description
@@ -37,12 +37,17 @@ cd $RPM_BUILD_DIR/%{name}
 %files
 %defattr(-,root,root)
 /usr/libexec/grid-monitoring/probes/eu.egi.mpi
-%config %{_sysconfdir}/ncg-metric-config.d/eu.egi.mpi.conf
+# %config %{_sysconfdir}/ncg-metric-config.d/eu.egi.mpi.conf
 %doc README
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu May 2 2013 Emir Imamagic <eimamagi@srce.hr> - 0.0.3-1%{?dist}
+- Removed ncg-metric-config file
+* Wed May 1 2013 Emir Imamagic <eimamagi@srce.hr> - 0.0.2-1%{?dist}
+- Modified test configuration for EMI CREAM-CE probe
+- Added CREAM-CE probe requirement
 * Mon Mar 04 2013 <enolfc _AT_ ifca.unican.es> - 0.0.1-1%{?dist}
 - Initial packaging of the probes. 
