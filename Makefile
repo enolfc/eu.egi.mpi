@@ -17,7 +17,7 @@ all:
 
 install: all
 	install -d $(PROBESDIR)
-	$(MAKE) -C etc install
+#	$(MAKE) -C etc install
 	$(MAKE) -C bdiisanity install
 	$(MAKE) -C simplejob install
 	$(MAKE) -C complexjob install
