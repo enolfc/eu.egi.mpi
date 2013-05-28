@@ -172,7 +172,15 @@ for flavor in "MPICH" "MPICH2" "OPENMPI" ; do
         echo ""
         echo "** Testing $flavor **"
         TYPE=`echo $flavor | tr '[:upper:]' '[:lower:]'`
-        # old style way of calling mpi-start to work with all versions
+
+        # Avoid bug #58 of mpi-start (should be fixed in newer versions)
+        MPI_VERSION=`eval echo \\$MPI_${flavor}_VERSION`
+        if [ "x$MPI_VERSION" != "x" ]; then
+            MPI_VERSION=`echo $MPI_VERSION | sed -e s/\\\\./__/g | sed -e s/-/_/g`
+            eval `echo export MPI_${flavor}_VERSION=$MPI_VERSION`
+        fi
+
+        # old style of calling mpi-start to work with all versions
         I2G_MPI_APPLICATION=pingtest \
             I2G_MPI_APPLICATION_ARGS=$NP \
             I2G_MPI_TYPE=$TYPE \
