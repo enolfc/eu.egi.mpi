@@ -161,7 +161,7 @@ def validate_time_policies(max_wc_time, max_cpu_time):
     if max_wc_time > BIG_NUMBER and max_cpu_time > BIG_NUMBER:
         set_warning('Publishes incorrect limits on cpu (%s)'
                     ' or wall clock time (%s)' % (MAX_CPUT, MAX_WALLT))
-    if max_wc_time != 0 and max_cpu_time / max_wc_time < 4:
+    if max_wc_time != 0 and max_cpu_time / max_wc_time <= 4:
         set_warning("Publishes %s (%d) / %s (%d) < 4"
                     % (MAX_CPUT, max_wc_time, MAX_WALLT, max_cpu_time))
 
