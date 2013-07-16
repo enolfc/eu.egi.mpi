@@ -44,7 +44,7 @@ cd $RPM_BUILD_DIR/%{name}
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
-* Tue Jul 16 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.5-1%{?dist}
+* Tue Jul 16 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.5-%{release}
 - Removed WholeNode requirement for complex job 
 * Wed May 29 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.4-1%{?dist}
 - Fixed minor bdii probe issues
