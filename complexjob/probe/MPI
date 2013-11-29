@@ -3,6 +3,7 @@
 # Some variables that are used in the probe
 # XXX this should be an argument to the probe
 
+CPUNUMBER=4
 NODES=2
 SMP=2
 APP=cpi
@@ -140,11 +141,10 @@ EOF
 
 NODE_ALLOC_SUPPORT=1
 # Include here any other LRMS without node-level alloc support
-if [ "$lrms" == "sge" -o "$lrms" == "ge" ] ; then
+if [ "$LRMS" == "sge" -o "$LRMS" == "ge" ] ; then
     NODE_ALLOC_SUPPORT=0
 fi
 
-MIN_SLOTS=$(( $NODES * $SMP ))
 
 MACHINES=`mktemp`
 I2G_MPI_TYPE=mpich I2G_MPI_PRE_RUN_HOOK=hooks.sh $I2G_MPI_START > $MACHINES
@@ -160,12 +160,12 @@ else
     echo ""
     echo "Detected $slots slots on the following hosts:"
     cat $MACHINES | sort -u 
-    if [ $slots -lt $MIN_SLOTS ] ; then
-        echo "mpi-start detected wrong number of processes (expected > $MIN_SLOTS)"
+    if [ $slots -lt $CPUNUMBER ] ; then
+        echo "mpi-start detected wrong number of processes (expected > $CPUNUMBER)"
         if [ $NODE_ALLOC_SUPPORT -eq 0 ] ; then
             echo "but your LRMS ($LRMS) may not support node-level allocation!"
         else
-            echo "mpi-start detected wrong number of processes (expected > $MIN_SLOTS)"
+            echo "mpi-start detected wrong number of processes (expected > $CPUNUMBER)"
             echo "MPI Status: WARNING"
             echo "summary: MPI Status: wrong number of slots detected ($slots)"
             exit $NAG_WARNING

@@ -1,9 +1,8 @@
 [
 Type="Job";
 JobType="Normal";
-HostNumber = 2;
-#WholeNodes = True;
-SMPGranularity=2;
+CPUNumber = 4;
+SMPGranularity = 2;
 Executable = "<jdlExecutable>";
 StdError = "gridjob.out";
 StdOutput = "gridjob.out";
