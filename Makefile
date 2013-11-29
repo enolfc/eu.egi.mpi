@@ -25,7 +25,7 @@ install: all
 dist:
 	mkdir -p build
 	rm -rf build/$(PKGNAME).src.tar.gz
-	git archive --prefix $(PKGNAME)/ master | gzip > build/$(PKGNAME).src.tar.gz
+	git archive --prefix $(PKGNAME)/ HEAD | gzip > build/$(PKGNAME).src.tar.gz
 
 rpm: dist
 	mkdir -p build/SOURCES build/SRPMS build/SPECS build/BUILD build/RPMS

@@ -5,7 +5,7 @@
 
 Summary: A MPI Nagios monitoring probe.
 Name: egi-mpi-nagios
-Version: 0.0.5
+Version: 0.0.6
 Vendor: EGI 
 Release: 1%{?dist}
 License: ASL 2.0
@@ -44,6 +44,9 @@ cd $RPM_BUILD_DIR/%{name}
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Nov 29 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.6-%{release}
+- Fix complex probe (issue #8).
+- Fix bdii check probe.
 * Tue Jul 16 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.5-%{release}
 - Removed WholeNode requirement for complex job 
 * Wed May 29 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.4-1%{?dist}
