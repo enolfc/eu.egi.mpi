@@ -5,11 +5,12 @@
 DESTDIR=.
 
 PROBESNAME=eu.egi.mpi
-PROBESDIR=$(DESTDIR)/usr/libexec/grid-monitoring/probes/$(PROBESNAME)
+PROBEDIR=usr/libexec/grid-monitoring/probes/$(PROBESNAME)/bdiisanity
 
 all:
 
 
 install: all
-	install -d $(PROBESDIR)/bdiisanity
-	install -m 0755 checkbdii $(PROBESDIR)/bdiisanity/
+	install -d $(DESTDIR)/$(PROBEDIR)
+	python setup.py install --root $(DESTDIR) \
+		--install-scripts $(PROBEDIR)
