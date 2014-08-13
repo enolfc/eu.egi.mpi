@@ -129,11 +129,11 @@ def main():
     # make sure the order of the messages is the one expected
     # since only one line is shown in the nagios status
     if exit_code == core.NAGIOS_OK:
-        logging.info("MPI related BDII values OK!")
+        print "MPI related BDII values OK!"
     elif exit_code == core.NAGIOS_CRIT:
-        logging.error(msgs['error'])
+        print msgs['error']
     elif exit_code == core.NAGIOS_WARN:
-        logging.warning(msgs['warning'])
+        print msgs['warning']
     for msg in msgs['info']:
-        logging.info(msg)
+        print msg
     sys.exit(exit_code)
