@@ -52,11 +52,13 @@ class GocDBGetter:
     def __init__(self, config):
         self.config = config
 
-    def get_sites(self):
+    def query_gocdb(self):
         logging.debug('Connecting to %s to fetch site list',
                       ''.join((self.config['gocdb_url'], GOCDB_METHOD)))
-        f = urlopen(self.config['gocdb_url'] + GOCDB_METHOD)   # , timeout=15)
-        d = parse(f)
+        return urlopen(self.config['gocdb_url'] + GOCDB_METHOD)
+
+    def get_sites(self):
+        d = parse(self.query_gocdb())
         return [s.getAttribute('NAME') for s in d.getElementsByTagName('SITE')]
 
 
@@ -114,7 +116,7 @@ class BDIIFetcher:
     def get_srte_site(self, site):
         l = self.ldap_init()
         entries = l.search_s(self.config['bdii_base'], ldap.SCOPE_SUBTREE,
-                             ('(&(objectclass=GlueCluster)'
+                             ('(&(objectClass=GlueCluster)'
                               '(GlueForeignKey=GlueSiteUniqueID=%s))') % site,
                              ['GlueClusterUniqueID'])
         if not entries:
@@ -123,7 +125,7 @@ class BDIIFetcher:
         for e in entries:
             cluster_id = e[1]['GlueClusterUniqueID'][0]
         r = l.search_s(self.config['bdii_base'], ldap.SCOPE_SUBTREE,
-                       ('(&(objectclass=GlueSubCluster)'
+                       ('(&(objectClass=GlueSubCluster)'
                         '(GlueChunkKey=GlueClusterUniqueID=%s))') % cluster_id,
                        [GLUE_RTE])
         if not r:
@@ -250,5 +252,5 @@ class MpiPolicyValidator:
         self.validate_mpi_env(srte)
         cluster_pcy = self.bdii_fetcher.get_pcy_cluster(cluster)
         for ce in cluster_pcy:
-            self.validate_policies(ce, ce[1])
+            self.validate_policies(ce[1][GLUE_CEID][0], ce[1])
         return self.code, self.messages
