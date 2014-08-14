@@ -18,6 +18,7 @@ URL: https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: python
 Requires: python-ldap
+Requires: python-setuptools
 Requires: emi-cream-nagios
 BuildArch: noarch
 
