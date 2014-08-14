@@ -1,3 +1,4 @@
+import mock
 import string
 import random
 import unittest
@@ -5,6 +6,27 @@ import unittest
 import mpimetrics.core as core
 import mpimetrics.tests.fixtures as fixtures
 
+
+class MockBDIIFetcher():
+    def __init__(self, config):
+        pass
+
+    def get_srte_site(self, site):
+        return fixtures.subcluster_rte, 'mock-site'
+
+    def get_srte_ce(self, ce):
+        return fixtures.subcluster_rte
+
+    def get_pcy_ce(self, ce):
+        return fixtures.policies
+
+    def get_pcy_cluster(self, cluster):
+        pcy_dict = {core.GLUE_CEID: 'ceid'}
+        pcy_dict.update(fixtures.policies)
+        return [
+            ['ce1', pcy_dict],
+            ['ce2', pcy_dict] 
+        ] 
 
 class TestPolicyValidator(unittest.TestCase):
     def test_policy_value_getter(self):
@@ -124,3 +146,16 @@ class TestPolicyValidator(unittest.TestCase):
         msg = "".join([random.choice(string.letters) for i in xrange(15)])
         validator.add_output(msg)
         self.assertIn(msg, validator.messages['info'])
+
+    @mock.patch('mpimetrics.core.BDIIFetcher', MockBDIIFetcher)
+    def test_validate_site_ces(self):
+        validator = core.MpiPolicyValidator({'flavors': ['OPENMPI']})
+        code, msgs = validator.validate_site_ces('fake')  
+        self.assertEqual(core.NAGIOS_OK, code)
+
+    @mock.patch('mpimetrics.core.BDIIFetcher', MockBDIIFetcher)
+    def test_validate_ce(self):
+        validator = core.MpiPolicyValidator({'flavors': ['OPENMPI']})
+        code, msgs = validator.validate_ce('fake')  
+        self.assertEqual(core.NAGIOS_OK, code)
+         
