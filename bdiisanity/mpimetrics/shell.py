@@ -36,6 +36,8 @@ def opt_parse():
                       help='test host HOSTNAME', metavar='HOSTNAME')
     parser.add_option('-a', '--all', action='store_true', default=False,
                       help='Test all the sites in GOCDB', dest='all')
+    parser.add_option('-S', '--site', dest='site',
+                      help='test site SITENAME', metavar='SITENAME')
     parser.add_option('-V', '--vo', default='ops', dest='vo',
                       help='Test info for VO', metavar='VO')
     parser.add_option('-t', '--timeout', dest='timeout', default=30,
@@ -55,11 +57,11 @@ def opt_parse():
                       help='Use GOCDB_URL to query GOCDB (tests all CEs)',
                       metavar='GOCDB_URL',)
     (options, args) = parser.parse_args()
-    if options.all and options.hostname:
-        parser.error('-a and -H options cannot be used simultaneously')
-    if not (options.all or options.hostname):
-        parser.error('Specify -a or -H options')
-
+    if not (options.all or options.hostname or options.site):
+        parser.error('Specify -a, -H or -S options')
+    if not(options.all ^ (options.hostname is not None)
+            ^ (options.site is not None)):
+        parser.error('-a, -H and -S options cannot be used simultaneously')
     if options.verbose:
         log_level = logging.DEBUG
     else:
@@ -73,6 +75,7 @@ def opt_parse():
         'timeout': options.timeout,
         'vo': options.vo,
         'ce': options.hostname,
+        'site': options.site,
         'all': options.all,
         # safe default for bdii_url
         'bdii_url': 'ldap://topbdii.core.ibergrid.eu:2170',
@@ -104,6 +107,19 @@ def check_all_sites(config):
     return validator.code, validator.messages
 
 
+def check_site_ces(config):
+    """
+    Checks the configuration of a site.
+    """
+    logging.debug("Testing CEs within a site")
+    validator = core.MpiPolicyValidator(config)
+    try:
+        return validator.validate_site_ces(config['site'])
+    except core.MpiMetricsException, e:
+        logging.error("Unknown error when checking site: %s", e)
+        sys.exit(core.NAGIOS_UNK)
+
+
 def check_ce(config):
     """
     Checks the configuration of a single CE.
@@ -124,6 +140,8 @@ def main():
     exit_code = core.NAGIOS_OK
     if config['all']:
         exit_code, msgs = check_all_sites(config)
+    elif config['site']:
+        exit_code, msgs = check_site_ces(config)
     else:
         exit_code, msgs = check_ce(config)
     # make sure the order of the messages is the one expected
