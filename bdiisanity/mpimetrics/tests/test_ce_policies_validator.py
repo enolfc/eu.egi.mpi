@@ -3,7 +3,7 @@ import random
 import unittest
 
 import mpimetrics.core as core
-import mpimetrics.core.tests.fixtures as fixtures
+import mpimetrics.tests.fixtures as fixtures
 
 
 class TestPolicyValidator(unittest.TestCase):
@@ -68,7 +68,7 @@ class TestPolicyValidator(unittest.TestCase):
     def test_validate_policies(self):
         validator = core.MpiPolicyValidator({})
         validator.validate_policies("fake", fixtures.policies)
-        self.assertEquals(validator.code, core.OK)
+        self.assertEquals(validator.code, core.NAGIOS_OK)
 
     def test_validate_flavor(self):
         validator = core.MpiPolicyValidator({})
