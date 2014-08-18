@@ -8,7 +8,7 @@
 
 Summary: A MPI Nagios monitoring probe.
 Name: egi-mpi-nagios
-Version: 0.0.6
+Version: 0.0.7
 Vendor: EGI 
 Release: 1%{?dist}
 License: ASL 2.0
@@ -16,6 +16,7 @@ Group: System Environment/Daemons
 Source: %{name}.src.tar.gz
 URL: https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRequires: python-setuptools
 Requires: python
 Requires: python-ldap
 Requires: python-setuptools
@@ -49,6 +50,9 @@ cd $RPM_BUILD_DIR/%{name}
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Mon Aug 18 2014 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.7-%{release}
+- Fix bdii check probe (issue #9)
+- Change in the bdii probe structure (as a python package)
 * Fri Nov 29 2013 Enol Fernandez <enolfc _AT_ ifca.unican.es> - 0.0.6-%{release}
 - Fix complex probe (issue #8).
 - Fix bdii check probe.
