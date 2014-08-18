@@ -3,6 +3,9 @@
 #                    CSIC - UC. All rights reserved.
 #
 
+
+%{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
+
 Summary: A MPI Nagios monitoring probe.
 Name: egi-mpi-nagios
 Version: 0.0.6
@@ -15,6 +18,7 @@ URL: https://wiki.egi.eu/wiki/VT_MPI_within_EGI:Nagios
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: python
 Requires: python-ldap
+Requires: python-setuptools
 Requires: emi-cream-nagios
 BuildArch: noarch
 
@@ -38,6 +42,7 @@ cd $RPM_BUILD_DIR/%{name}
 %defattr(-,root,root)
 /usr/libexec/grid-monitoring/probes/eu.egi.mpi
 # %config %{_sysconfdir}/ncg-metric-config.d/eu.egi.mpi.conf
+%{python_sitelib}/mpimetrics*
 %doc README
 
 %clean
