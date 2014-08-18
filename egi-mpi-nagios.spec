@@ -44,7 +44,7 @@ cd $RPM_BUILD_DIR/%{name}
 /usr/libexec/grid-monitoring/probes/eu.egi.mpi
 # %config %{_sysconfdir}/ncg-metric-config.d/eu.egi.mpi.conf
 %{python_sitelib}/mpimetrics*
-%doc README
+%doc README.md
 
 %clean
 rm -rf $RPM_BUILD_ROOT
