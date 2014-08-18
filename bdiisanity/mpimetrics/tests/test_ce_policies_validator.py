@@ -25,8 +25,9 @@ class MockBDIIFetcher():
         pcy_dict.update(fixtures.policies)
         return [
             ['ce1', pcy_dict],
-            ['ce2', pcy_dict] 
-        ] 
+            ['ce2', pcy_dict],
+        ]
+
 
 class TestPolicyValidator(unittest.TestCase):
     def test_policy_value_getter(self):
@@ -150,12 +151,11 @@ class TestPolicyValidator(unittest.TestCase):
     @mock.patch('mpimetrics.core.BDIIFetcher', MockBDIIFetcher)
     def test_validate_site_ces(self):
         validator = core.MpiPolicyValidator({'flavors': ['OPENMPI']})
-        code, msgs = validator.validate_site_ces('fake')  
+        code, msgs = validator.validate_site_ces('fake')
         self.assertEqual(core.NAGIOS_OK, code)
 
     @mock.patch('mpimetrics.core.BDIIFetcher', MockBDIIFetcher)
     def test_validate_ce(self):
         validator = core.MpiPolicyValidator({'flavors': ['OPENMPI']})
-        code, msgs = validator.validate_ce('fake')  
+        code, msgs = validator.validate_ce('fake')
         self.assertEqual(core.NAGIOS_OK, code)
-         
