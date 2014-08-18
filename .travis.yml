@@ -1,0 +1,14 @@
+language: python
+python:
+    - "2.7"
+
+install:
+    - sudo apt-get update
+    - sudo apt-get install -y libsasl2-dev libldap-dev python-dev python-virtualenv
+    - pip install -r bdiisanity/requirements.txt
+    - pip install -r bdiisanity/test-requirements.txt
+
+script:
+    - cd bdiisanity
+    - flake8 mpimetrics
+    - nosetests

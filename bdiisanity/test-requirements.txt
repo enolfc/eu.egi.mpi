@@ -1,0 +1,5 @@
+mock
+nose
+flake8
+coverage
+mockldap
