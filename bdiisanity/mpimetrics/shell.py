@@ -40,8 +40,9 @@ def opt_parse():
                       help='test site SITENAME', metavar='SITENAME')
     parser.add_option('-V', '--vo', default='ops', dest='vo',
                       help='Test info for VO', metavar='VO')
-    parser.add_option('-t', '--timeout', dest='timeout', default=30,
-                      help='set timeout value to TIMEOUT', metavar='TIMEOUT')
+    parser.add_option('-t', '--timeout', dest='timeout', default=30.,
+                      type="float", help='set timeout value to TIMEOUT',
+                      metavar='TIMEOUT')
     parser.add_option('-f', '--flavor', dest='flavors',
                       default=["MPICH", "MPICH2", "OPENMPI"],
                       help='test specific MPI flavor', metavar='FLAVOR',

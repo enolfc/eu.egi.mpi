@@ -174,7 +174,7 @@ else
     nodes=`cat $MACHINES | sort -u | wc -l`
     if [ $NODE_ALLOC_SUPPORT -ne 0 -a $nodes -ne $NODES ] ; then
         echo "mpi-start detected wrong number of nodes (expected $NODES)"
-        echo "MPI Status: wARNING"
+        echo "MPI Status: WARNING"
         echo "summary: MPI Status: wrong number of nodes detected ($nodes)"
         exit $NAG_WARNING
     fi
