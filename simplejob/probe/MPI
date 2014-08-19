@@ -131,7 +131,7 @@ if [ $st -eq 0 ] ; then
     cat $MACHINES | sort -u
     if [ $count != $NP ] ; then
         echo "mpi-start detected wrong number of processes (expected $NP)"
-        echo "MPI Status: wARNING"
+        echo "MPI Status: WARNING"
     	echo "summary: MPI Status: wARNING"
         exit $NAG_WARNING
     fi
@@ -139,7 +139,7 @@ else
     echo "Unable to execute dummy test to fetch number of processes,"
     echo "probably mpi-start was unable to detect the scheduler"
     echo "MPI Status: WARNING"
-    echo "summary: MPI Status: wARNING"
+    echo "summary: MPI Status: WARNING"
     exit $NAG_WARNING 
 fi
 
