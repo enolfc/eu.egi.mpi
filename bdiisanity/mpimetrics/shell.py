@@ -25,6 +25,21 @@ import sys
 import mpimetrics.core as core
 
 
+default_bdii_url = 'ldap://topbdii.core.ibergrid.eu:2170'
+
+
+def get_bdii_url(url=None):
+    if url:
+        return 'ldap://%s' % url
+    else:
+        try:
+            bdii = os.environ['LCG_GFAL_INFOSYS'].split(',')[0]
+            return 'ldap://%s' % (bdii)
+        except KeyError:
+            # safe default for bdii url
+            return default_bdii_url
+
+
 def opt_parse():
     """
     Parses the command line options.
@@ -78,17 +93,8 @@ def opt_parse():
         'ce': options.hostname,
         'site': options.site,
         'all': options.all,
-        # safe default for bdii_url
-        'bdii_url': 'ldap://topbdii.core.ibergrid.eu:2170',
     }
-    if options.bdii_url:
-        config['bdii_url'] = 'ldap://%s' % options.bdii_url
-    else:
-        try:
-            bdii = os.environ['LCG_GFAL_INFOSYS'].split(',')[0]
-            config['bdii_url'] = 'ldap://%s' % (bdii)
-        except KeyError:
-            pass
+    config['bdii_url'] = get_bdii_url(options.bdii_url)
     return config
 
 
